@@ -3,11 +3,11 @@ on: push
 jobs:
   test:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags')
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v2
       - name: Run Unit Tests
-        run: go test
+        run: go test -v -cover
 
   deploy:
     runs-on: ubuntu-latest
@@ -17,9 +17,9 @@ jobs:
       - name: Extract Version
         id: version_step
         run: |
-          echo "##[set-output name=version;]VERSION=${GITHUB_REF#$"refs/tags/v"}"
-          echo "##[set-output name=version_tag;]$GITHUB_REPOSITORY:${GITHUB_REF#$"refs/tags/v"}"
-          echo "##[set-output name=latest_tag;]$GITHUB_REPOSITORY:latest"
+          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          echo "version_tag=$GITHUB_REPOSITORY:${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          echo "latest_tag=$GITHUB_REPOSITORY:latest" >> $GITHUB_ENV
       - name: Print Version
         run: |
           echo ${{steps.version_step.outputs.version_tag}}
@@ -36,11 +36,12 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
 
-      - name: PrepareReg Names
+      - name: Prepare Docker Image Tags
         id: read-docker-image-identifiers
         run: |
           echo VERSION_TAG=$(echo ${{ steps.version_step.outputs.version_tag }} | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
-          echo LASTEST_TAG=$(echo ${{ steps.version_step.outputs.latest_tag  }} | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
+          echo LATEST_TAG=$(echo ${{ steps.version_step.outputs.latest_tag  }} | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
+      # This step builds the Docker image and pushes it to the Docker registry
       - name: Build and push
         id: docker_build
         uses: docker/build-push-action@v2
@@ -48,6 +49,6 @@ jobs:
           push: true
           tags: |
             ${{env.VERSION_TAG}}
-            ${{env.LASTEST_TAG}}
+            ${{env.LATEST_TAG}}
           build-args: |
-            ${{steps.version_step.outputs.version}}
+            VERSION=${{ steps.version_step.outputs.version }}
