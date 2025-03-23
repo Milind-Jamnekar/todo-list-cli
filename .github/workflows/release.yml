@@ -1,0 +1,66 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*" # Trigger on tags starting with 'v'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21" # Update this to match your Go version
+
+      - name: Test
+        run: go test -v ./...
+
+  build-and-release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21" # Update this to match your Go version
+
+      - name: Get the version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Build for Linux
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o todo-list-linux-amd64
+          GOOS=linux GOARCH=arm64 go build -o todo-list-linux-arm64
+
+      - name: Build for macOS
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -o todo-list-darwin-amd64
+          GOOS=darwin GOARCH=arm64 go build -o todo-list-darwin-arm64
+
+      - name: Build for Windows
+        run: |
+          GOOS=windows GOARCH=amd64 go build -o todo-list-windows-amd64.exe
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            todo-list-linux-amd64
+            todo-list-linux-arm64
+            todo-list-darwin-amd64
+            todo-list-darwin-arm64
+            todo-list-windows-amd64.exe
+          tag_name: ${{ env.VERSION }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
