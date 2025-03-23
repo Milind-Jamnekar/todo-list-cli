@@ -4,12 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/csv"
-	"io"
-	"log"
-	"os"
-	"strconv"
-	"time"
+	"todo-list/core"
 
 	"github.com/spf13/cobra"
 )
@@ -21,69 +16,9 @@ var addCmd = &cobra.Command{
 	Args:      cobra.ExactArgs(1),
 	ValidArgs: []string{"Taks name"},
 	Run: func(cmd *cobra.Command, args []string) {
-		add(args[0], getWriter())
+		fileName := "todo.csv"
+		core.Add(args[0], fileName, core.GetWriter(fileName))
 	},
-}
-
-func fileExists(filename string) bool {
-	_, err := os.Stat(filename)
-	return !os.IsNotExist(err)
-}
-
-func getLatestIdFromCsv() int {
-	// If file doesn't exist yet, return 1 as the first ID
-	if !fileExists("todo.csv") {
-		return 1
-	}
-
-	file, err := os.Open("todo.csv")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	reader := csv.NewReader(file)
-	var lineCount int = 0
-
-	for {
-		_, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Fatal(err)
-		}
-		lineCount++
-	}
-
-	// Subtract 1 for header and add 1 for new ID
-	return lineCount
-}
-
-func add(data string, writer *csv.Writer) {
-	id := getLatestIdFromCsv()
-	now := time.Now().Format(time.RFC3339)
-	writer.Write([]string{strconv.Itoa(id), data, now, "false"})
-	writer.Flush()
-}
-
-func getWriter() *csv.Writer {
-	fileExists := fileExists("todo.csv")
-
-	file, err := os.OpenFile("todo.csv", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	writer := csv.NewWriter(file)
-
-	// Write header if it's a new file
-	if !fileExists {
-		writer.Write([]string{"Id", "Task", "Created", "Done"})
-		writer.Flush()
-	}
-
-	return writer
 }
 
 func init() {
